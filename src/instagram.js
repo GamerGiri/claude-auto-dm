@@ -44,19 +44,38 @@ async function getUserName(userId) {
 
 // ── Verify that webhook payload came from Meta ───────────────────────
 function verifyWebhookSignature(rawBody, signature) {
-  if (!signature) return false;
-  const appSecret = process.env.META_APP_SECRET;
-  if (!appSecret) return true; // skip if not configured (dev mode)
+  if (!signature) {
+    console.warn('[sig] No signature header received');
+    return false;
+  }
 
-  const expected = 'sha256=' + crypto
-    .createHmac('sha256', appSecret)
+  const appSecret = process.env.META_APP_SECRET;
+  if (!appSecret) {
+    console.warn('[sig] META_APP_SECRET not set — skipping verification (dev mode)');
+    return true;
+  }
+
+  // Compute expected signature
+  const expectedHash = crypto
+    .createHmac('sha256', appSecret.trim())
     .update(rawBody)
     .digest('hex');
+  const expected = 'sha256=' + expectedHash;
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expected)
-  );
+  console.log('[sig] expected:', expected);
+  console.log('[sig] received:', signature);
+
+  // Safe comparison
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(expected),
+      Buffer.from(signature)
+    );
+  } catch {
+    // Buffers different length = definitely wrong
+    console.warn('[sig] Buffer length mismatch');
+    return false;
+  }
 }
 
 // ── Refresh long-lived token before it expires ───────────────────────
@@ -69,7 +88,6 @@ async function refreshToken() {
       }
     });
     console.log('[token] Refreshed. Expires in:', response.data.expires_in, 'seconds');
-    // In production, you'd persist this new token to env or a secrets manager
     return response.data.access_token;
   } catch (err) {
     console.error('[token] Refresh failed:', err.response?.data || err.message);
