@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Instagram DM Bot</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f9f9f9;
+    --surface: #ffffff;
+    --border: #e5e5e5;
+    --border-strong: #d0d0d0;
+    --text: #111;
+    --text-muted: #666;
+    --text-faint: #999;
+    --accent: #534AB7;
+    --accent-light: #EEEDFE;
+    --accent-text: #3C3489;
+    --success: #1D9E75;
+    --success-light: #E1F5EE;
+    --danger: #E24B4A;
+    --danger-light: #FCEBEB;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ─────────────────────────────────────────── */
+  .shell { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 15px;
+  }
+  .logo-text { font-size: 15px; font-weight: 600; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 1.25rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-left: 3px solid transparent;
+    transition: all .15s;
+    font-size: 14px;
+  }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-light); font-weight: 500; }
+  .nav-item i { width: 18px; text-align: center; font-size: 15px; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 1rem 1.25rem 0;
+    border-top: 1px solid var(--border);
+  }
+  .status-pill {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--text-muted);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+  .dot.off { background: var(--border-strong); }
+
+  .main { flex: 1; padding: 2rem; max-width: 820px; }
+
+  /* ── Header ─────────────────────────────────────────── */
+  .page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+  .page-title { font-size: 20px; font-weight: 600; }
+  .page-sub { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+
+  /* ── Stats ──────────────────────────────────────────── */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.75rem; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+  }
+  .stat-num { font-size: 26px; font-weight: 600; margin-bottom: 2px; }
+  .stat-label { font-size: 12px; color: var(--text-muted); }
+
+  /* ── Cards ──────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .card-body { padding: 1rem 1.25rem; }
+
+  /* ── Reel card ──────────────────────────────────────── */
+  .reel-row { display: flex; gap: 14px; align-items: flex-start; }
+  .reel-thumb {
+    width: 46px; height: 62px; flex-shrink: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-faint); font-size: 18px;
+  }
+  .reel-content { flex: 1; min-width: 0; }
+  .reel-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .reel-name { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reel-url { font-size: 12px; color: var(--text-faint); margin-bottom: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+  .tag {
+    font-size: 11px; padding: 2px 9px;
+    border-radius: 20px;
+    background: var(--accent-light);
+    color: var(--accent-text);
+    border: 1px solid #CECBF6;
+    font-weight: 500;
+  }
+
+  .dm-bubble {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .dm-bubble .name-var { color: var(--accent); font-weight: 500; }
+
+  .reel-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0; }
+
+  /* ── Toggle ─────────────────────────────────────────── */
+  .toggle { position: relative; width: 36px; height: 20px; }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    border-radius: 20px;
+    background: var(--border-strong);
+    cursor: pointer; transition: background .2s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+  .toggle-thumb {
+    position: absolute; top: 3px; left: 3px;
+    width: 14px; height: 14px;
+    border-radius: 50%; background: #fff;
+    transition: left .2s; pointer-events: none;
+  }
+  .toggle input:checked ~ .toggle-thumb { left: 19px; }
+
+  /* ── Icon buttons ───────────────────────────────────── */
+  .icon-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-faint); padding: 5px; border-radius: 6px;
+    font-size: 14px; display: flex; align-items: center;
+    transition: all .15s;
+  }
+  .icon-btn:hover { background: var(--bg); color: var(--text); }
+  .icon-btn.danger:hover { background: var(--danger-light); color: var(--danger); }
+
+  /* ── Buttons ─────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    font-size: 14px; cursor: pointer; font-family: inherit;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); transition: all .15s;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-text); border-color: var(--accent-text); }
+  .btn-ghost { border-style: dashed; color: var(--text-muted); }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── Forms ──────────────────────────────────────────── */
+  .form-group { margin-bottom: 14px; }
+  .form-group:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  input[type=text], input[type=password], textarea, select {
+    width: 100%;
+    padding: 8px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px; font-family: inherit;
+    background: var(--surface); color: var(--text);
+    outline: none; transition: border-color .15s;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+  .char-count { font-size: 11px; color: var(--text-faint); text-align: right; margin-top: 4px; }
+  .hint { font-size: 12px; color: var(--text-faint); margin-top: 5px; }
+
+  /* ── Drawer / slide-in panel ─────────────────────────── */
+  .drawer-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.35); z-index: 100;
+  }
+  .drawer-overlay.open { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: -480px;
+    width: 460px; height: 100vh;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    z-index: 101; overflow-y: auto;
+    transition: right .25s ease;
+    display: flex; flex-direction: column;
+  }
+  .drawer.open { right: 0; }
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .drawer-title { font-size: 16px; font-weight: 600; }
+  .drawer-body { padding: 1.5rem; flex: 1; }
+  .drawer-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 8px; justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  /* ── Activity log ───────────────────────────────────── */
+  .log-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-icon { color: var(--accent); font-size: 15px; flex-shrink: 0; }
+  .log-user { font-weight: 500; }
+  .log-detail { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .log-kw {
+    font-size: 11px; padding: 2px 8px;
+    background: var(--accent-light); color: var(--accent-text);
+    border-radius: 20px; font-weight: 500; flex-shrink: 0;
+  }
+  .log-time { color: var(--text-faint); font-size: 12px; margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+
+  /* ── Login screen ───────────────────────────────────── */
+  .login-wrap {
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center;
+    background: var(--bg);
+  }
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    width: 340px;
+  }
+  .login-logo { text-align: center; margin-bottom: 1.5rem; }
+  .login-logo .logo-icon { width: 48px; height: 48px; font-size: 22px; margin: 0 auto 10px; }
+  .login-logo h1 { font-size: 18px; font-weight: 600; }
+  .login-logo p { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
+
+  /* ── Toast ──────────────────────────────────────────── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #222; color: #fff;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; z-index: 999;
+    opacity: 0; transition: opacity .2s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+  #toast.success { background: var(--success); }
+  #toast.error { background: var(--danger); }
+
+  /* ── Empty state ─────────────────────────────────────── */
+  .empty {
+    text-align: center; padding: 3rem 0;
+    color: var(--text-faint);
+  }
+  .empty i { font-size: 36px; margin-bottom: 10px; display: block; }
+  .empty p { font-size: 14px; }
+
+  /* ── Section label ───────────────────────────────────── */
+  .section-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-faint); margin-bottom: 10px;
+  }
+
+  /* ── Spinner ─────────────────────────────────────────── */
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Global rule ─────────────────────────────────────── */
+  .global-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .global-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--accent-light); color: var(--accent-text);
+    border: 1px solid #CECBF6;
+  }
+  .global-tag button { background: none; border: none; cursor: pointer; color: var(--accent-text); font-size: 14px; line-height: 1; padding: 0; }
+
+  @media (max-width: 680px) {
+    .sidebar { display: none; }
+    .main { padding: 1rem; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .drawer { width: 100%; right: -100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Login screen ──────────────────────────────────── -->
+<div id="login-screen" class="login-wrap" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-icon"><i class="fa-brands fa-instagram"></i></div>
+      <h1>DM Bot</h1>
+      <p>Sign in to manage your auto-replies</p>
+    </div>
+    <div class="form-group">
+      <label>Admin password</label>
+      <input type="password" id="login-password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doLogin()" id="login-btn">
+      Sign in
+    </button>
+    <p id="login-error" style="color:var(--danger);font-size:12px;margin-top:8px;text-align:center;display:none">Incorrect password.</p>
+  </div>
+</div>
+
+<!-- ── App shell ─────────────────────────────────────── -->
+<div id="app-shell" class="shell" style="display:none">
+
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-icon"><i class="fa-brands fa-instagram"></i></div>
+      <span class="logo-text">DM Bot</span>
+    </div>
+
+    <div class="nav-item active" onclick="showTab('reels')" id="nav-reels">
+      <i class="fa-solid fa-film"></i> Reels
+    </div>
+    <div class="nav-item" onclick="showTab('global')" id="nav-global">
+      <i class="fa-solid fa-earth-asia"></i> Global keywords
+    </div>
+    <div class="nav-item" onclick="showTab('log')" id="nav-log">
+      <i class="fa-solid fa-chart-line"></i> Activity log
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-pill">
+        <div class="dot" id="status-dot"></div>
+        <span id="status-text">Connecting…</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ── Reels tab ─────────────────────────────────── -->
+    <div id="tab-reels">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Reels</div>
+          <div class="page-sub">Keyword rules per reel — these take priority over the global rule</div>
+        </div>
+        <button class="btn btn-primary" onclick="openDrawer('add')">
+          <i class="fa-solid fa-plus"></i> Add reel
+        </button>
+      </div>
+
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-num" id="st-reels">—</div><div class="stat-label">Active reels</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-today">—</div><div class="stat-label">DMs sent today</div></div>
+        <div class="stat-card"><div class="stat-num" id="st-week">—</div><div class="stat-label">DMs this week</div></div>
+      </div>
+
+      <div class="section-label">Your reels</div>
+      <div id="reels-list"></div>
+    </div>
+
+    <!-- ── Global tab ─────────────────────────────────── -->
+    <div id="tab-global" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Global keywords</div>
+          <div class="page-sub">Applies to all reels when no reel-specific rule matches</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="form-group">
+            <label>Trigger keywords</label>
+            <div class="global-tags" id="global-tags-display"></div>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="global-kw-input" placeholder="Type keyword and press Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();addGlobalTag()}" style="flex:1" />
+              <button class="btn" onclick="addGlobalTag()">Add</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>DM message</label>
+            <textarea id="global-dm" maxlength="500" oninput="updateCharCount(this,'global-dm-count')"></textarea>
+            <div class="char-count" id="global-dm-count">0 / 500</div>
+            <p class="hint"><i class="fa-solid fa-circle-info"></i> Use <code>{{name}}</code> to insert the commenter's first name.</p>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <label style="text-transform:none;font-size:14px;color:var(--text);margin:0">Active</label>
+            <label class="toggle">
+              <input type="checkbox" id="global-active" />
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+
+          <button class="btn btn-primary" onclick="saveGlobal()" id="global-save-btn">
+            Save global rule
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Log tab ──────────────────────────────────────── -->
+    <div id="tab-log" style="display:none">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Activity log</div>
+          <div class="page-sub">Every comment that triggered a DM</div>
+        </div>
+        <button class="btn" onclick="loadLog()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-num" id="log-st-today">—</div><div class="stat-label">Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="log-st-week">—</div><div class="stat-label">This week</div></div>
+        <div class="stat-card"><div class="stat-num" id="log-st-total">—</div><div class="stat-label">All time</div></div>
+      </div>
+
+      <div class="section-label">Recent activity</div>
+      <div class="card"><div class="card-body" id="log-list"></div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Add / Edit drawer ─────────────────────────────── -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawer-title">Add reel rule</span>
+    <button class="icon-btn" onclick="closeDrawer()"><i class="fa-solid fa-xmark" style="font-size:18px"></i></button>
+  </div>
+  <div class="drawer-body">
+    <input type="hidden" id="drawer-rule-id" />
+
+    <div class="form-group">
+      <label>Reel title</label>
+      <input type="text" id="drawer-title-input" placeholder="e.g. Product launch reel" />
+    </div>
+
+    <div class="form-group">
+      <label>Instagram media ID</label>
+      <input type="text" id="drawer-media-id" placeholder="e.g. 17854360229135492" />
+      <p class="hint">Find it via: <code>GET /v19.0/{ig-user-id}/media?fields=id,permalink</code></p>
+    </div>
+
+    <div class="form-group">
+      <label>Trigger keywords <span style="font-weight:400;text-transform:none">(comma separated)</span></label>
+      <input type="text" id="drawer-keywords" placeholder="e.g. link, price, send me, info" />
+    </div>
+
+    <div class="form-group">
+      <label>DM message</label>
+      <textarea id="drawer-dm" maxlength="500" oninput="updateCharCount(this,'drawer-dm-count')" placeholder="Hi {{name}}! Here's the link you asked for: https://..."></textarea>
+      <div class="char-count" id="drawer-dm-count">0 / 500</div>
+      <p class="hint"><i class="fa-solid fa-circle-info"></i> Use <code>{{name}}</code> for the commenter's first name.</p>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:14px">Active</span>
+      <label class="toggle">
+        <input type="checkbox" id="drawer-active" checked />
+        <span class="toggle-track"></span>
+        <span class="toggle-thumb"></span>
+      </label>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn" onclick="closeDrawer()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveDrawer()" id="drawer-save-btn">Save rule</button>
+  </div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+// ── Config ─────────────────────────────────────────────
+// Since frontend is served by the same Express server, API calls use relative URLs.
+const API = '';  // empty = same origin
+
+// ── State ──────────────────────────────────────────────
+let password = '';
+let rules = { global: { keywords: [], dm: '', active: true }, reels: [] };
+let globalTags = [];
+let drawerMode = 'add';
+
+// ── Auth ───────────────────────────────────────────────
+function init() {
+  const stored = sessionStorage.getItem('dm_bot_pw');
+  if (stored) {
+    password = stored;
+    showApp();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+}
+
+async function doLogin() {
+  const pw = document.getElementById('login-password').value.trim();
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    const res = await apiFetch('/api/rules', { headers: { 'x-admin-password': pw } });
+    if (res.ok) {
+      password = pw;
+      sessionStorage.setItem('dm_bot_pw', pw);
+      document.getElementById('login-screen').style.display = 'none';
+      showApp();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+    }
+  } catch {
+    document.getElementById('login-error').style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Sign in';
+}
+
+// ── API helpers ────────────────────────────────────────
+function headers(extra = {}) {
+  return { 'Content-Type': 'application/json', 'x-admin-password': password, ...extra };
+}
+
+async function apiFetch(path, opts = {}) {
+  return fetch(API + path, { ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
+}
+
+// ── App startup ────────────────────────────────────────
+async function showApp() {
+  document.getElementById('app-shell').style.display = 'flex';
+  await Promise.all([loadRules(), loadStats()]);
+  checkHealth();
+  setInterval(checkHealth, 30000);
+}
+
+async function checkHealth() {
+  try {
+    const res = await fetch(API + '/health');
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    if (res.ok) {
+      dot.className = 'dot';
+      const d = await res.json();
+      txt.textContent = 'Online · up ' + fmtUptime(d.uptime);
+    } else {
+      dot.className = 'dot off';
+      txt.textContent = 'Server error';
+    }
+  } catch {
+    document.getElementById('status-dot').className = 'dot off';
+    document.getElementById('status-text').textContent = 'Offline';
+  }
+}
+
+function fmtUptime(s) {
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s / 60) + 'm';
+  return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+}
+
+// ── Load data ──────────────────────────────────────────
+async function loadRules() {
+  try {
+    const res = await apiFetch('/api/rules');
+    rules = await res.json();
+    renderReels();
+    renderGlobalForm();
+  } catch (e) {
+    toast('Failed to load rules', 'error');
+  }
+}
+
+async function loadStats() {
+  try {
+    const res = await apiFetch('/api/stats');
+    const s = await res.json();
+    document.getElementById('st-reels').textContent = (rules.reels || []).filter(r => r.active).length;
+    document.getElementById('st-today').textContent = s.today;
+    document.getElementById('st-week').textContent = s.week;
+  } catch {}
+}
+
+async function loadLog() {
+  try {
+    const [logRes, statsRes] = await Promise.all([
+      apiFetch('/api/log?limit=100'),
+      apiFetch('/api/stats')
+    ]);
+    const logs = await logRes.json();
+    const stats = await statsRes.json();
+
+    document.getElementById('log-st-today').textContent = stats.today;
+    document.getElementById('log-st-week').textContent = stats.week;
+    document.getElementById('log-st-total').textContent = stats.total;
+
+    const list = document.getElementById('log-list');
+    if (!logs.length) {
+      list.innerHTML = '<div class="empty"><i class="fa-solid fa-inbox"></i><p>No activity yet. Comments that trigger a DM will appear here.</p></div>';
+      return;
+    }
+    list.innerHTML = logs.map(l => `
+      <div class="log-item">
+        <i class="fa-solid fa-message log-icon"></i>
+        <div>
+          <div class="log-user">${escHtml(l.user)}</div>
+          <div class="log-detail">${escHtml(l.reelTitle || 'Global rule')} · "${escHtml(l.comment || '')}"</div>
+        </div>
+        <span class="log-kw">${escHtml(l.keyword)}</span>
+        <span class="log-time">${timeAgo(l.ts)}</span>
+      </div>
+    `).join('');
+  } catch {
+    toast('Failed to load log', 'error');
+  }
+}
+
+// ── Render reels ───────────────────────────────────────
+function renderReels() {
+  const list = document.getElementById('reels-list');
+  const reels = rules.reels || [];
+  if (!reels.length) {
+    list.innerHTML = `<div class="empty"><i class="fa-solid fa-film"></i><p>No reel rules yet. Add one to get started.</p></div>`;
+    return;
+  }
+  list.innerHTML = reels.map(r => `
+    <div class="card" id="reel-card-${r.id}">
+      <div class="card-body">
+        <div class="reel-row">
+          <div class="reel-thumb"><i class="fa-solid fa-play"></i></div>
+          <div class="reel-content">
+            <div class="reel-top">
+              <div class="dot ${r.active ? '' : 'off'}"></div>
+              <div class="reel-name">${escHtml(r.title)}</div>
+              <div class="reel-actions">
+                <button class="icon-btn" onclick="openDrawer('edit','${r.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                <button class="icon-btn danger" onclick="deleteReel('${r.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                <label class="toggle" title="Toggle active">
+                  <input type="checkbox" ${r.active ? 'checked' : ''} onchange="toggleReel('${r.id}', this.checked)" />
+                  <span class="toggle-track"></span>
+                  <span class="toggle-thumb"></span>
+                </label>
+              </div>
+            </div>
+            <div class="reel-url">ID: ${escHtml(r.mediaId)}</div>
+            <div class="tags">${r.keywords.map(k => `<span class="tag">${escHtml(k)}</span>`).join('')}</div>
+            <div class="dm-bubble">${escHtml(r.dm).replace(/\{\{name\}\}/g, '<span class="name-var">{{name}}</span>')}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('st-reels').textContent = reels.filter(r => r.active).length;
+}
+
+// ── Toggle reel ────────────────────────────────────────
+async function toggleReel(id, active) {
+  try {
+    const res = await apiFetch(`/api/rules/reels/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ active })
+    });
+    if (res.ok) {
+      const r = rules.reels.find(x => x.id === id);
+      if (r) r.active = active;
+      renderReels();
+    }
+  } catch {
+    toast('Failed to update rule', 'error');
+  }
+}
+
+// ── Delete reel ────────────────────────────────────────
+async function deleteReel(id) {
+  if (!confirm('Delete this reel rule?')) return;
+  try {
+    const res = await apiFetch(`/api/rules/reels/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      rules.reels = rules.reels.filter(r => r.id !== id);
+      renderReels();
+      toast('Rule deleted');
+    } else {
+      toast('Failed to delete', 'error');
+    }
+  } catch {
+    toast('Network error', 'error');
+  }
+}
+
+// ── Drawer ─────────────────────────────────────────────
+function openDrawer(mode, id) {
+  drawerMode = mode;
+  clearDrawerForm();
+
+  if (mode === 'edit' && id) {
+    const r = rules.reels.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('drawer-title').textContent = 'Edit reel rule';
+    document.getElementById('drawer-save-btn').textContent = 'Save changes';
+    document.getElementById('drawer-rule-id').value = id;
+    document.getElementById('drawer-title-input').value = r.title;
+    document.getElementById('drawer-media-id').value = r.mediaId;
+    document.getElementById('drawer-keywords').value = r.keywords.join(', ');
+    document.getElementById('drawer-dm').value = r.dm;
+    document.getElementById('drawer-active').checked = r.active;
+    updateCharCount(document.getElementById('drawer-dm'), 'drawer-dm-count');
+  } else {
+    document.getElementById('drawer-title').textContent = 'Add reel rule';
+    document.getElementById('drawer-save-btn').textContent = 'Add rule';
+    document.getElementById('drawer-active').checked = true;
+  }
+
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+}
+
+function clearDrawerForm() {
+  ['drawer-rule-id','drawer-title-input','drawer-media-id','drawer-keywords','drawer-dm'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('drawer-dm-count').textContent = '0 / 500';
+}
+
+async function saveDrawer() {
+  const titleVal = document.getElementById('drawer-title-input').value.trim();
+  const mediaId = document.getElementById('drawer-media-id').value.trim();
+  const kwRaw = document.getElementById('drawer-keywords').value.trim();
+  const dm = document.getElementById('drawer-dm').value.trim();
+  const active = document.getElementById('drawer-active').checked;
+
+  if (!mediaId) return toast('Media ID is required', 'error');
+  if (!kwRaw) return toast('Add at least one keyword', 'error');
+  if (!dm) return toast('DM message is required', 'error');
+
+  const keywords = kwRaw.split(',').map(k => k.trim()).filter(Boolean);
+  const title = titleVal || 'Untitled reel';
+  const btn = document.getElementById('drawer-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  try {
+    let res;
+    if (drawerMode === 'edit') {
+      const id = document.getElementById('drawer-rule-id').value;
+      res = await apiFetch(`/api/rules/reels/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title, mediaId, keywords, dm, active })
+      });
+    } else {
+      res = await apiFetch('/api/rules/reels', {
+        method: 'POST',
+        body: JSON.stringify({ title, mediaId, keywords, dm, active })
+      });
+    }
+
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Save failed', 'error'); return; }
+
+    await loadRules();
+    closeDrawer();
+    toast(drawerMode === 'edit' ? 'Rule updated ✓' : 'Rule added ✓', 'success');
+  } catch {
+    toast('Network error', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = drawerMode === 'edit' ? 'Save changes' : 'Add rule';
+  }
+}
+
+// ── Global rule form ───────────────────────────────────
+function renderGlobalForm() {
+  const g = rules.global || {};
+  globalTags = [...(g.keywords || [])];
+  renderGlobalTags();
+  document.getElementById('global-dm').value = g.dm || '';
+  document.getElementById('global-active').checked = g.active !== false;
+  updateCharCount(document.getElementById('global-dm'), 'global-dm-count');
+}
+
+function renderGlobalTags() {
+  document.getElementById('global-tags-display').innerHTML =
+    globalTags.map((k, i) => `
+      <span class="global-tag">
+        ${escHtml(k)}
+        <button onclick="removeGlobalTag(${i})" title="Remove">×</button>
+      </span>
+    `).join('');
+}
+
+function addGlobalTag() {
+  const inp = document.getElementById('global-kw-input');
+  const v = inp.value.trim().toLowerCase();
+  if (v && !globalTags.includes(v)) { globalTags.push(v); renderGlobalTags(); }
+  inp.value = '';
+}
+
+function removeGlobalTag(i) {
+  globalTags.splice(i, 1);
+  renderGlobalTags();
+}
+
+async function saveGlobal() {
+  const dm = document.getElementById('global-dm').value.trim();
+  const active = document.getElementById('global-active').checked;
+  if (!dm) return toast('DM message is required', 'error');
+
+  const btn = document.getElementById('global-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  try {
+    const res = await apiFetch('/api/rules/global', {
+      method: 'PUT',
+      body: JSON.stringify({ keywords: globalTags, dm, active })
+    });
+    if (res.ok) {
+      rules.global = { keywords: globalTags, dm, active };
+      toast('Global rule saved ✓', 'success');
+    } else {
+      toast('Save failed', 'error');
+    }
+  } catch {
+    toast('Network error', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save global rule';
+  }
+}
+
+// ── Tabs ───────────────────────────────────────────────
+function showTab(name) {
+  ['reels','global','log'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
+    document.getElementById('nav-' + t).classList.toggle('active', t === name);
+  });
+  if (name === 'log') loadLog();
+}
+
+// ── Helpers ────────────────────────────────────────────
+function updateCharCount(el, countId) {
+  document.getElementById(countId).textContent = el.value.length + ' / 500';
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 2800);
+}
+
+// ── Boot ───────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
