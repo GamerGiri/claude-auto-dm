@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: instagram-dm-bot
+    env: node
+    region: oregon
+    plan: free          # upgrade to "starter" ($7/mo) to avoid spin-down natively
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: INSTAGRAM_ACCESS_TOKEN
+        sync: false       # set manually in Render dashboard
+      - key: INSTAGRAM_BUSINESS_ACCOUNT_ID
+        sync: false
+      - key: WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: RENDER_EXTERNAL_URL
+        sync: false       # set to https://your-app-name.onrender.com
+      - key: KEEPALIVE_INTERVAL_MINUTES
+        value: "13"
+      - key: DM_COOLDOWN_MINUTES
+        value: "60"
