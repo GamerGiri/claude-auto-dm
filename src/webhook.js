@@ -20,22 +20,29 @@ router.get('/', (req, res) => {
 });
 
 // ── POST /webhook — incoming comment events ───────────────────────────
-router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
-  // Verify signature first
+// rawBody is attached by the middleware in server.js BEFORE any body parser
+router.post('/', async (req, res) => {
   const sig = req.headers['x-hub-signature-256'];
-  if (!verifyWebhookSignature(req.body, sig)) {
-    console.warn('[webhook] Invalid signature — request rejected');
-    return res.sendStatus(401);
+  const rawBody = req.rawBody;
+
+  // If META_APP_SECRET is not set, skip signature check (dev mode)
+  if (process.env.META_APP_SECRET) {
+    if (!rawBody || !verifyWebhookSignature(rawBody, sig)) {
+      console.warn('[webhook] Invalid signature — request rejected');
+      console.warn('[webhook] sig received:', sig);
+      return res.sendStatus(401);
+    }
   }
 
   let body;
   try {
-    body = JSON.parse(req.body.toString());
+    body = JSON.parse((rawBody || req.body || '').toString());
   } catch {
+    console.warn('[webhook] Could not parse body');
     return res.sendStatus(400);
   }
 
-  // Respond to Meta immediately (required within 5s)
+  // Respond to Meta immediately (must be within 5s)
   res.sendStatus(200);
 
   // Process asynchronously
@@ -47,10 +54,14 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
 });
 
 async function processWebhookEvent(body) {
-  if (body.object !== 'instagram') return;
+  if (body.object !== 'instagram') {
+    console.log('[webhook] Non-instagram event, skipping:', body.object);
+    return;
+  }
 
   for (const entry of (body.entry || [])) {
     for (const change of (entry.changes || [])) {
+      console.log('[webhook] Change field:', change.field);
       if (change.field !== 'comments') continue;
 
       const value = change.value;
@@ -58,17 +69,22 @@ async function processWebhookEvent(body) {
       const commenterId = value.from?.id;
       const commenterName = value.from?.username || value.from?.name || 'unknown';
       const mediaId = value.media?.id;
-      const commentId = value.id;
 
-      if (!commenterId || !commentText || !mediaId) continue;
+      if (!commenterId || !commentText || !mediaId) {
+        console.log('[webhook] Missing fields — commenterId:', commenterId, 'text:', commentText, 'mediaId:', mediaId);
+        continue;
+      }
 
       console.log(`[comment] @${commenterName}: "${commentText}" on media ${mediaId}`);
 
       // Skip our own comments (prevent loops)
       const accountId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
-      if (commenterId === accountId) continue;
+      if (commenterId === accountId) {
+        console.log('[webhook] Skipping own comment');
+        continue;
+      }
 
-      // Check cooldown — don't spam the same user
+      // Check cooldown
       if (isInCooldown(commenterId)) {
         console.log(`[cooldown] Skipping @${commenterName} — DM sent recently`);
         continue;
@@ -81,17 +97,14 @@ async function processWebhookEvent(body) {
         continue;
       }
 
-      // Fetch first name for personalisation
+      // Get first name
       const firstName = await getUserName(commenterId);
-
-      // Render DM with name substitution
       const dmText = renderDM(match.dm, firstName);
 
       // Send DM
       try {
         await sendDM(commenterId, dmText);
         setCooldown(commenterId);
-
         appendLog({
           user: '@' + commenterName,
           userId: commenterId,
@@ -101,7 +114,6 @@ async function processWebhookEvent(body) {
           mediaId,
           source: match.source
         });
-
         console.log(`[dm-sent] → @${commenterName} | keyword: "${match.matchedKeyword}" | source: ${match.source}`);
       } catch (err) {
         console.error(`[dm-error] Failed to DM @${commenterName}:`, err.response?.data || err.message);

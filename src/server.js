@@ -15,21 +15,36 @@ const { refreshToken } = require('./instagram');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ── Trust Render's reverse proxy (fixes X-Forwarded-For warning) ──────
+app.set('trust proxy', 1);
+
 // ── Security ──────────────────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 
-// Rate limit all API routes (not webhook — Meta needs unrestricted access)
+// Rate limit API routes only (webhook must stay unrestricted for Meta)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { error: 'Too many requests, slow down.' }
 });
 app.use('/api', limiter);
 
-// ── Parse JSON for API routes (webhook parses its own raw body) ───────
+// ── CRITICAL: capture raw body for webhook signature verification ─────
+// Must be registered BEFORE any json/urlencoded body parsers
+app.use('/webhook', (req, res, next) => {
+  let data = [];
+  req.on('data', chunk => data.push(chunk));
+  req.on('end', () => {
+    req.rawBody = Buffer.concat(data);
+    next();
+  });
+});
+
+// ── Parse JSON for API routes only ───────────────────────────────────
 app.use('/api', express.json());
 
 // ── Routes ────────────────────────────────────────────────────────────
@@ -71,10 +86,7 @@ app.listen(PORT, () => {
   console.log(`   Health:   GET  /health`);
   console.log(`   API:      GET  /api/rules\n`);
 
-  // Start keep-alive self-pinger
   keepAlive.start();
-
-  // Schedule daily token refresh
   keepAlive.scheduleTokenRefresh(refreshToken);
 });
 
